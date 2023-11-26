@@ -1,6 +1,14 @@
 #include <math.h>
 
-int binary[8];
+float F, T, stepTimeus, currentPI, DC, SYM, v255;
+
+double sineFX;
+
+int base256, binary[8], WAVE;
+
+unsigned long lastInterruptTime = 0, interruptTime;
+
+bool clockwise, changeFrequency = true, changeDutyCycle, changeSymmetry;
 
 void intTo8Bit(int num)
 {
@@ -17,45 +25,81 @@ void intTo8Bit(int num)
     for (i--, j = 7; i >= 0; i--, j--) binary[j] = temp[i] - '0';
 }
 
+void setParameters(float frequency, float dutyCycle, float symmetry, int wave)
+{
+    F = frequency;
+    T = 1/F;
+    stepTimeus = (T / 1024.0) * 1000000.0;
+    currentPI = 0.0;
+    DC = dutyCycle;
+    SYM = symmetry;
+    WAVE = wave;
+}
+
+void rotation()
+{  
+    interruptTime = millis();
+
+    if (interruptTime - lastInterruptTime < 1) return;
+
+    digitalRead(2) == LOW ? clockwise = true : clockwise = false;
+
+    if (clockwise)
+    {
+        if (changeFrequency) F++;
+        if (changeDutyCycle) DC++;
+        if (changeSymmetry) SYM++;
+    }
+
+    else
+    {
+        if (changeFrequency) F--;
+        if (changeDutyCycle) DC--;
+        if (changeSymmetry) SYM--;
+    }
+
+    setParameters(F, DC, SYM, WAVE);
+
+    lastInterruptTime = interruptTime;
+}
+
 void setup()
 {
-    for (int i = 3; i < 11; i++) pinMode(i, OUTPUT);
+    for (int i = 2; i < 12; i++)
+    {
+        if (i > 3) pinMode(i, OUTPUT);
+
+        else
+        {
+            pinMode(i, INPUT_PULLUP);
+            attachInterrupt(digitalPinToInterrupt(i), rotation, LOW);
+        }
+    }
+    
+    setParameters(100.0, 50.0, 50.0, 2);
 
     Serial.begin(115200);
 }
 
-float F = 500;
-float T = 1/F;
-float t = 0.0;
-float stepTimeus = T / 1024.0 * 1000000.0;
-float currentPI = 0.0;
-float v255;
-double sineFX;
-
-int base256, x;
-
 void loop()
 {
-    currentPI += PI / 512.0;
     sineFX = (sin(currentPI) + 1) / 2.0;
     v255 = 255.0 * sineFX;
 
     base256 = round(v255);
 
     intTo8Bit(base256);
-  
-//    for (int x = 0; x < 7; x++) Serial.print(binary[x]);
-//    Serial.println(' ');
 
     Serial.println(base256);
 
-    for (int x = 0; x < 8; x++) {digitalWrite(x + 3, binary[x]); Serial.print(binary[x]);}
+    for (int x = 0; x < 8; x++) { digitalWrite(x + 4, binary[x]); /*Serial.print(binary[x]);*/ }
 
-    Serial.println(' ');
+//    Serial.println(' ');
 
+    currentPI += PI / 512.0;
     if (currentPI >= 2 * PI) currentPI = 0.0;
   
-//    delayMicroseconds(stepTimeus);
+    delayMicroseconds(244.14 / 4);
 
-    delay(5);
+//delay(10);
 }
