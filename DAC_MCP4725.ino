@@ -9,11 +9,11 @@ float F, T, stepTimeus, currentPI, rise, fall, v4095;
 
 double sineFX;
 
-int base4096, SYM, WAVE;
+int base4096, SYM, WAVE, mode = 0;
 
 unsigned long lastInterruptTime = 0, interruptTime;
 
-bool clockwise, changeFrequency, changeSymmetry = true, changeWave;
+bool clockwise;
 
 void setParameters(float frequency, int symmetry, int wave)
 {
@@ -34,24 +34,22 @@ void rotation()
 
     if (interruptTime - lastInterruptTime < 1) return;
 
-    int READ2 = (PIND >> 2) & (B00000100 >> 2);
-
-    READ2 == 0 ? clockwise = true : clockwise = false;
+    clockwise == !((PIND >> 2) & (B00000100 >> 2))
 
     if (clockwise)
     {
-        if (changeFrequency) F++;
-        if (changeSymmetry) SYM++;
-        if (changeWave) WAVE++;
+        if (mode == 0) F++;
+        if (mode == 1) SYM++;
+        if (mode == 2) WAVE++;
 
         if (WAVE == 3) WAVE = 0;
     }
 
     else
     {
-        if (changeFrequency) F--;
-        if (changeSymmetry) SYM--;
-        if (changeWave) WAVE--;
+        if (mode == 0) F--;
+        if (mode == 1) SYM--;
+        if (mode == 2) WAVE--;
 
         if (WAVE == -1) WAVE = 2;
     }
@@ -65,6 +63,7 @@ void setup()
 {
     pinMode(2, INPUT_PULLUP);
     pinMode(3, INPUT_PULLUP);
+    pinMode(7, INPUT_PULLUP);
     
     attachInterrupt(digitalPinToInterrupt(2), rotation, LOW);
     attachInterrupt(digitalPinToInterrupt(3), rotation, LOW);
@@ -75,7 +74,16 @@ void setup()
 }
 
 void loop()
-{    
+{
+    // MODE CHANGE
+    if ((PIND >> 7) & (B10000000 >> 7)) == 0)
+    {
+        mode++;
+
+        mode == 3 ? mode = 0 : NULL;
+    }
+
+    // SQUARE
     if (WAVE == 0)
     {
         if (currentPI >= rise) v4095 = 0.0;
@@ -83,6 +91,7 @@ void loop()
         else v4095 = 4095.0;
     }
 
+    // TRIANGLE
     if (WAVE == 1)
     {        
         float factor = currentPI / rise;
@@ -96,6 +105,7 @@ void loop()
         }
     }
 
+    // SINE
     if (WAVE == 2)
     {
         sineFX = (sin(currentPI) + 1) / 2.0;
@@ -106,8 +116,8 @@ void loop()
 
     dac.setVoltage(base4096, false);
 
-    currentPI += PI / 512.0;
-    if (currentPI >= 2 * PI) currentPI = 0.0;
+    currentPI += (PI / 512.0);
+    if (currentPI >= (2 * PI)) currentPI = 0.0;
 
     for (int i = 0; i < stepTimeus; i++) _delay_us(1);
 }
