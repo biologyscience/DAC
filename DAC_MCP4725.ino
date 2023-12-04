@@ -34,7 +34,7 @@ void rotation()
 
     if (interruptTime - lastInterruptTime < 1) return;
 
-    clockwise == !((PIND >> 2) & (B00000100 >> 2))
+    clockwise == !((PIND >> 2) & (B00000100 >> 2));
 
     if (clockwise)
     {
@@ -68,7 +68,7 @@ void setup()
     attachInterrupt(digitalPinToInterrupt(2), rotation, LOW);
     attachInterrupt(digitalPinToInterrupt(3), rotation, LOW);
     
-    setParameters(100.0, 50, 1);
+    setParameters(50.0, 50, 0);
 
     dac.begin(0x60);
 }
@@ -76,7 +76,7 @@ void setup()
 void loop()
 {
     // MODE CHANGE
-    if ((PIND >> 7) & (B10000000 >> 7)) == 0)
+    if (((PIND >> 7) & (B10000000 >> 7)) == 0)
     {
         mode++;
 
