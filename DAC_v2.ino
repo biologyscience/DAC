@@ -70,7 +70,6 @@ void setup()
     pinMode(2, INPUT_PULLUP);
     pinMode(3, INPUT_PULLUP);
     pinMode(7, INPUT_PULLUP);
-    pinMode(A0, INPUT);
     
     attachInterrupt(digitalPinToInterrupt(2), rotation, LOW);
     attachInterrupt(digitalPinToInterrupt(3), rotation, LOW);
@@ -78,8 +77,6 @@ void setup()
     setParameters(500.0, 50, 0);
 
     dac.begin(0x60);
-
-    Serial.begin(9600);
 }
 
 void loop()
@@ -130,8 +127,6 @@ void loop()
     base4096 = round(v4095);
 
     dac.setVoltage(base4096, false);
-
-    Serial.println(analogRead(A0));
 
     runAfter(STEP, micros());
 }
