@@ -16,25 +16,11 @@ double sineFX;
 
 int t = 0, base4096, SYM, WAVE, mode = 2;
 
-char waveType[10][3] = {"Square", "Triangle", "Sine"};
+char waveType[3][10] = {"Square", "Triangle", "Sine"};
 
 unsigned long lastInterruptTime = 0, interruptTime;
 
 bool clockwise, UP = true;
-
-void setParameters(float frequency, int symmetry, int wave)
-{
-    F = frequency;
-    SYM = symmetry;
-    WAVE = wave;
-
-    if (WAVE == 2) SYM = 50;
-
-    T = 1 / F;
-    Tus = T * 1000000.0;
-    rise = (SYM / 100.0) * (Tus / 2.0);
-    fall = (Tus / 2.0) - rise;
-}
 
 void displayNEW()
 {
@@ -63,6 +49,20 @@ void displayNEW()
     display.display();
 }
 
+void setParameters(float frequency, int symmetry, int wave)
+{
+    F = frequency;
+    SYM = symmetry;
+    WAVE = wave;
+
+    if (WAVE == 2) SYM = 50;
+
+    T = 1 / F;
+    Tus = T * 1000000.0;
+    rise = (SYM / 100.0) * (Tus / 2.0);
+    fall = (Tus / 2.0) - rise;
+}
+
 void rotation()
 {
     interruptTime = millis();
@@ -71,47 +71,82 @@ void rotation()
 
     int READ2 = (PIND >> 2) & (B00000100 >> 2);
 
-    READ2 == 0 ? clockwise = true : clockwise = false;
+    READ2 == 0 ? clockwise = false : clockwise = true;
 
     if (clockwise)
     {
-
         if (mode == 0)
         {
-
-            if (F >= 0 && F <= 1000)
-                F += 10;
-        };
+            F++;
+            
+            if (F > 1000) F = 1000.0;
+        }
+        
         if (mode == 1)
+        {
             SYM++;
+
+            if (SYM > 100) SYM = 100;
+        }
+
         if (mode == 2)
+        {
             WAVE++;
 
-        if (WAVE == 3)
-            WAVE = 0;
+            if (WAVE == 3) WAVE = 0;
+        }
     }
 
     else
     {
         if (mode == 0)
         {
-            if (F >= 0 && F <= 1000)
-                F -= 10;
+            F--;
+            
+            if (F < 0) F = 1.0;
         }
+        
         if (mode == 1)
+        {
             SYM--;
+
+            if (SYM < 0) SYM = 0;
+        }
+        
         if (mode == 2)
+        {
             WAVE--;
 
-        if (WAVE == -1)
-            WAVE = 2;
+            if (WAVE == -1) WAVE = 2;
+        }
     }
 
     setParameters(F, SYM, WAVE);
 
     lastInterruptTime = interruptTime;
 
-    displayNEW();
+//    displayNEW();
+}
+
+void displayMode()
+{
+    if (mode == 0)
+    {
+        PORTD |= B00010000;
+        PORTD &= B10011111;
+    }
+
+    if (mode == 1)
+    {
+        PORTD |= B00100000;
+        PORTD &= B10101111;
+    }
+
+    if (mode == 2)
+    {
+        PORTD |= B01000000;
+        PORTD &= B11001111;
+    }
 }
 
 void setup()
@@ -120,14 +155,19 @@ void setup()
     pinMode(3, INPUT_PULLUP);
     pinMode(7, INPUT_PULLUP);
 
+    pinMode(4, OUTPUT);
+    pinMode(5, OUTPUT);
+    pinMode(6, OUTPUT);
+
     attachInterrupt(digitalPinToInterrupt(2), rotation, LOW);
     attachInterrupt(digitalPinToInterrupt(3), rotation, LOW);
 
     dac.begin(0x60);
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
 
-    setParameters(10.0, 50, 0);
-    displayNEW();
+    setParameters(100.0, 50, 0);
+    displayMode();
+//    displayNEW();
 }
 
 void loop()
@@ -149,7 +189,9 @@ void loop()
     {
         mode++;
 
-        mode == 3 ? mode = 0 : NULL;
+        if (mode == 3) mode = 0;
+
+        displayMode();
     }
 
     // SQUARE
@@ -157,8 +199,7 @@ void loop()
     {
         v4095 = 4095.0;
 
-        if (!UP)
-            v4095 = 0.0;
+        if (!UP) v4095 = 0.0;
     }
 
     // TRIANGLE
@@ -166,8 +207,7 @@ void loop()
     {
         v4095 = 4095.0 * factor;
 
-        if (!UP)
-            v4095 = 4095.0 - v4095;
+        if (!UP) v4095 = 4095.0 - v4095;
     }
 
     // SINE
